@@ -1,0 +1,12 @@
+Small objects (≤ min_alloc_size) hurt RocksDB disproportionately. Because 1KB < min_alloc_size, the data is shoved inline into RocksDB values. You get zero 
+data device savings from that, but you do concentrate all I/O onto the DB NVMe — compaction pressure on the DB device becomes the bottleneck, not the data HDD. 
+This is why clusters handling many small objects should have oversized DB devices and aggressive bloom filter tuning.
+
+Bucket index is the hidden amplifier. The rgw.buckets.index pool takes both a read and a write per PUT — and those omap entries in RocksDB are among the most 
+compaction-heavy records at scale. Sharding the index (bucket_index_max_shards) reduces hotspot pressure but doesn't reduce the I/O count per operation.
+
+The WAL is your latency hero. The ~24 synchronous physical IOPS in the immediate path are almost entirely sequential WAL writes on NVMe — which is why a 
+good WAL device (Optane/P5800X class) has an outsized impact on small-object PUT latency compared to the data device.
+
+Ops log doubles your log pool I/O. If you don't need per-request audit logging, disabling rgw_enable_ops_log removes 1 RADOS write
+(3 physical OSD writes after replication) per PUT and meaningfully reduces log pool pressure.
