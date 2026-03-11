@@ -1,0 +1,10 @@
+Amplification Summary
+Amplification TypeFactorCause
+RGW logical write amplification              4×1           PUT → 4 RADOS writes (data + index + stats + opslog) 
+RGW logical read amplification                3×            Auth + ACL + index existence check reads
+RADOS replication write amplification          3×           3-replica pools
+BlueStore WAL write amplification              1×           (immediate)Every write goes through WAL before ACK
+RocksDB internal write amplification         ~10×             L0 flush + compaction across levels
+Combined write amplification (immediate)     ~12×            4 writes × 3 replicas × 1 WAL
+Combined write amplification (steady-state)  ~120–130×      Including RocksDB compaction background I/O
+Data device write amplification  0                          1KB object stored inline in RocksDB; zero data device IOPS
